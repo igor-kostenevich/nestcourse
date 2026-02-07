@@ -23,4 +23,7 @@ export class OrderItem {
 
   @Column('int')
   quantity: number;
+
+  @Column('int')
+  price: number;
 }
