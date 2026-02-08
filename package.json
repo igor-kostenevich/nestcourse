@@ -20,11 +20,13 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm:run": "typeorm-ts-node-commonjs migration:run -d typeorm.config.ts",
     "typeorm:revert": "typeorm-ts-node-commonjs migration:revert -d typeorm.config.ts",
+    "migration:run": "docker exec ecommerce_api npm run typeorm:run",
+    "migration:revert": "docker exec ecommerce_api npm run typeorm:revert",
     "typeorm:generate": "typeorm-ts-node-commonjs migration:generate",
     "typeorm:create": "typeorm-ts-node-commonjs migration:create",
     "migration:generate": "docker exec ecommerce_api npx typeorm-ts-node-commonjs migration:generate -d typeorm.config.ts",
-    "migration:run": "docker exec ecommerce_api npm run typeorm:run",
-    "migration:revert": "docker exec ecommerce_api npm run typeorm:revert"
+    "performance:explain:inner": "ts-node scripts/explain-plans.ts",
+    "performance:explain": "docker exec ecommerce_api npm run performance:explain:inner"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
