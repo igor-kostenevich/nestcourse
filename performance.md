@@ -1,3 +1,11 @@
+## Запит
+
+```sql
+SELECT * FROM products WHERE name = 'test';
+```
+
+Відповідає пошуку продуктів за назвою (каталог, API типу `GET /products?name=...`). Запит «гарячий», бо викликається часто; без індексу по `name` PostgreSQL робить Seq Scan по всій таблиці — при зрості кількості товарів час виконання зростає. Індекс по `name` дає Index/Bitmap Index Scan і стабільну швидкість.
+
 ## BEFORE
 ```
 Seq Scan on products  (cost=0.00..22.12 rows=5 width=56) (actual time=0.027..0.028 rows=5 loops=1)
