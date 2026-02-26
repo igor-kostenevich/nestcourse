@@ -12,6 +12,15 @@ import { Order } from './order.entity';
 import { OrderItem } from './order-item.entity';
 import { Product } from '../products/product.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
+import {
+  OrdersFilterInput,
+  OrdersPaginationInput,
+  OrdersResponse,
+} from './graphql/order.type';
+
+const DEFAULT_LIMIT = 20;
+const DEFAULT_OFFSET = 0;
+const MAX_LIMIT = 50;
 
 @Injectable()
 export class OrdersService {
@@ -25,7 +34,7 @@ export class OrdersService {
     private readonly orderRepository: Repository<Order>,
   ) {}
 
-  async findAll(
+  async findWithPagination(
     userId?: string,
     offset = 0,
     limit = 10,
@@ -45,6 +54,92 @@ export class OrdersService {
       data,
       meta: { total, offset, limit },
     };
+  }
+
+  async findAll(
+    filter?: OrdersFilterInput,
+    pagination?: OrdersPaginationInput,
+  ): Promise<OrdersResponse> {
+    return this.findOrders(filter, pagination);
+  }
+
+  async findOrders(
+    filter?: OrdersFilterInput,
+    pagination?: OrdersPaginationInput,
+  ): Promise<OrdersResponse> {
+    const offset =
+      pagination?.offset !== undefined ? pagination.offset : DEFAULT_OFFSET;
+    let limit =
+      pagination?.limit !== undefined ? pagination.limit : DEFAULT_LIMIT;
+
+    if (offset < 0 || (typeof limit === 'number' && limit < 0)) {
+      throw new BadRequestException(
+        'offset and limit must be non-negative',
+      );
+    }
+
+    if (
+      filter?.dateFrom &&
+      filter?.dateTo &&
+      new Date(filter.dateFrom) > new Date(filter.dateTo)
+    ) {
+      throw new BadRequestException(
+        'dateFrom cannot be greater than dateTo',
+      );
+    }
+
+    if (limit > MAX_LIMIT) {
+      limit = MAX_LIMIT;
+    }
+
+    if (limit <= 0) {
+      limit = DEFAULT_LIMIT;
+    }
+
+    const qb = this.orderRepository
+      .createQueryBuilder('order')
+      .leftJoinAndSelect('order.items', 'items')
+      .orderBy('order.id', 'ASC');
+
+    if (filter?.status !== undefined && filter.status !== null) {
+      qb.andWhere('order.status = :status', { status: filter.status });
+    }
+
+    if (filter?.dateFrom !== undefined && filter.dateFrom !== null) {
+      qb.andWhere('order.createdAt >= :dateFrom', {
+        dateFrom: filter.dateFrom,
+      });
+    }
+
+    if (filter?.dateTo !== undefined && filter.dateTo !== null) {
+      qb.andWhere('order.createdAt <= :dateTo', { dateTo: filter.dateTo });
+    }
+
+    if (filter?.userId !== undefined && filter.userId !== null) {
+      qb.andWhere('order.user_id = :userId', { userId: filter.userId });
+    }
+
+    qb.skip(offset).take(limit);
+
+    try {
+      const [data, total] = await qb.getManyAndCount();
+      return {
+        data,
+        meta: { total, offset, limit },
+      };
+    } catch (e) {
+      if (
+        e instanceof BadRequestException ||
+        e instanceof ConflictException ||
+        e instanceof NotFoundException
+      ) {
+        throw e;
+      }
+      this.logger.error('findOrders failed', {
+        error: e instanceof Error ? e.message : String(e),
+      });
+      throw new InternalServerErrorException();
+    }
   }
 
   async findOne(id: string): Promise<Order> {
@@ -146,6 +241,7 @@ export class OrdersService {
 
         const orderItem = queryRunner.manager.create(OrderItem, {
           order,
+          productId: product.id,
           product,
           quantity: item.quantity,
           price: product.price,
