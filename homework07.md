@@ -53,6 +53,33 @@ query {
 }
 ```
 
+- **Запит з змінними:** у завданні приклад написаний під формат `orders { id status ... }`, але в цій реалізації `orders` повертає тип **`OrdersResponse`** з полями `data` та `meta`. Тому поля ордера (`id`, `status`, `items` тощо) треба запитувати всередині `data`. У типі `Product` поле називається **`name`**, не `title`. Коректний запит:
+
+```graphql
+query Orders($filter: OrdersFilterInput, $pagination: OrdersPaginationInput) {
+  orders(filter: $filter, pagination: $pagination) {
+    data {
+      id
+      status
+      createdAt
+      items {
+        quantity
+        product {
+          id
+          name
+          price
+        }
+      }
+    }
+    meta {
+      total
+      offset
+      limit
+    }
+  }
+}
+```
+
 
 ## Усунення N+1 для OrderItem.product
 
