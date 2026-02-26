@@ -28,7 +28,7 @@ export class OrdersController {
   ) {
     const offset = pagination?.offset ?? 0;
     const limit = pagination?.limit ?? 10;
-    return this.ordersService.findAll(userId, offset, limit);
+    return this.ordersService.findWithPagination(userId, offset, limit);
   }
 
   @Get(':id')
